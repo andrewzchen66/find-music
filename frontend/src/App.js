@@ -13,7 +13,7 @@ const CLIENT_SECRET = process.env.REACT_APP_CLIENT_SECRET;
 
 function App() {
   const [searchInput, setSearchInput] = useState("");
-  const [accessToken, setAccessToken] = useState("");
+  // const [accessToken, setAccessToken] = useState("");
   const [albums, setAlbums] = useState([]);
   const [artistName, setArtistName] = useState("");
 
@@ -21,14 +21,9 @@ function App() {
     try{
       console.log("Fetching access tokens");
       const tok = axios.get("http://localhost:8080/get-token")
-        .then((response) => response.data)
-        .then((data) => {
-          setAccessToken(data);
-        })
     } catch(error) {
       console.log("Error fetching data: ", error)
     }
-    console.log("Access Token: " + accessToken)
     // ______________________________________
     // try {
     //   // Request API Access Token, expires after 1 hour
@@ -58,14 +53,17 @@ function App() {
       return
     }
     console.log("Begin Search: " + searchInput);
-    const response = await axios.get("http://localhost:8080/search/?" + searchInput)
+    const response = await axios.get("http://localhost:8080/search/" + searchInput)
       .then((response) => {
-        console.log("Search reached frontend with value " + response.data)
-        setArtistName(response.data.artistName);
-        setAlbums(response.data.albums);
+        console.log("Search Response: " + response.data)
         return response.data})
+      .then((data) => {
+        console.log("Search reached frontend with value " + data)
+        setArtistName(data.artistName);
+        setAlbums(data.albums);
+        return data})
       .catch((error) => {
-        console.error("Error: " + error);
+        console.error("Search Error: " + error);
       });
 
     // console.log("Search for " + searchInput);
@@ -108,7 +106,7 @@ function App() {
 
   return (
     <div className="App">
-      <Navbar>{accessToken}</Navbar>
+      <Navbar>Spotifynd</Navbar>
       <Container>
         <InputGroup className="mb-3" size="lg">
           <FormControl

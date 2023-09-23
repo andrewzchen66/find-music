@@ -7,6 +7,13 @@ require("dotenv").config(".env");
 const app = express();
 const port = 8080; // Default port to listen on.
 let db: Db;
+// Private information
+const CLIENT_ID: string = process.env.CLIENT_ID;
+const CLIENT_SECRET: string = process.env.CLIENT_SECRET;
+let accessToken: string;
+let artistName: string;
+let artistID: string;
+let albums: any;
 
 // Middleware.
 app.use(express.json());
@@ -19,17 +26,29 @@ app.use(
 );
 app.use(bodyParser.urlencoded({ extended: false }));
 
+// app.use(async (req, res, next) => {
+//   try {
+//     const authParameters = {
+//       method: 'POST',
+//       headers: {
+//         'Content-Type': 'application/x-www-form-urlencoded'
+//       },
+//       body: 'grant_type=client_credentials&client_id=' + CLIENT_ID + '&client_secret=' + CLIENT_SECRET
+//     }
+//     const accessToken = await fetch('https://accounts.spotify.com/api/token', authParameters)
+//       .then(result => result.json())
+//       .then(data => data.access_token)
+//     req.accessToken = accessToken;
+//     next();
+//     return res.json(accessToken);
+//   } catch(error) {
+//     return res.status(500).send();
+//   }
+// })
+
 // ====================================================================
 // Routes
 // ====================================================================
-
-// Private information
-const CLIENT_ID: string = process.env.CLIENT_ID;
-const CLIENT_SECRET: string = process.env.CLIENT_SECRET;
-let accessToken: string;
-let artistName: string;
-let artistID: string;
-let albums: any;
 
 // Requests the API Access Token, expires after 1 hour
 app.get("/get-token", async (req, res) => {
@@ -41,7 +60,7 @@ app.get("/get-token", async (req, res) => {
       },
       body: 'grant_type=client_credentials&client_id=' + CLIENT_ID + '&client_secret=' + CLIENT_SECRET
     }
-    const accessToken = await fetch('https://accounts.spotify.com/api/token', authParameters)
+    accessToken = await fetch('https://accounts.spotify.com/api/token', authParameters)
       .then(result => result.json())
       .then(data => data.access_token)
     return res.json(accessToken);
@@ -51,10 +70,10 @@ app.get("/get-token", async (req, res) => {
 })
 // _____________________________________________
 // Requests an artist name and an array of album search results based on user's searchbar input
-app.get("/search/:userInput", async (req, res) => {
-  console.log("Start: " + req.params.userInput);
-  const searchInput = req.params.userInput;
+app.get("/search/:searchInput", async (req, res) => {
+  const searchInput = req.params.searchInput;
   console.log("Search for " + searchInput);
+  console.log("Token: " + accessToken);
   const searchParameters = {
     method: 'GET',
     headers: {
@@ -64,13 +83,20 @@ app.get("/search/:userInput", async (req, res) => {
   }
 
   // Get request using search to get Artist ID
-  let artist;
+  let artist: { name: string, id: string };
+  console.log("Fetching artist... with token: " + accessToken)
   try {
     artist = await fetch('https://api.spotify.com/v1/search?q=' + searchInput + '&type=artist', searchParameters)
-      .then(response => response.json())
-      .then(data => {return data.artists.items[0]})
+      .then(response => {
+        console.log("we did it: " + response);
+        return response.json();})
+      .then(data => {
+        console.log("DATA: " + data);
+        console.log("artist: " + data.artists.items[0]);
+        return data.artists.items[0];
+      })
   } catch(error) {
-    console.log("Error fetching artist: " + error)
+    console.log("Error fetching artist: bruh " + error)
   }
   artistName = artist.name;
   artistID = artist.id;
@@ -81,11 +107,14 @@ app.get("/search/:userInput", async (req, res) => {
   try {
     albums = await fetch('https://api.spotify.com/v1/artists/' + artistID + '/albums' + '?include_groups=album,appears_on&market=US&limit=50', searchParameters)
       .then(response => response.json())
-      .then(data => {data.items})
+      .then(data => data.items)
   } catch(error) {
     console.log("Error fetching albums: " + error)
   }
+
   console.log("Albums are: " + albums.map((a: any) => {return a.name}))
+  console.log("artistName is: " + artistName);
+
   return res.json(
     {
       artistName,
